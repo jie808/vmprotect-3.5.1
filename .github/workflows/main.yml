@@ -1,35 +1,48 @@
 name: vmpbuild
+
 on: [pull_request, push]
+
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
+    # 检出代码
     - uses: actions/checkout@v3
- 
+
+    # 设置 MSBuild 到 PATH
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
-       
-    - name: setup vsdevenv
+
+    # 设置 Visual Studio Developer Command Prompt
+    - name: Setup Visual Studio devenv
       uses: seanmiddleditch/gha-setup-vsdevenv@master
- 
+
+    # 设置 Python 环境（用于 aqtinstall）
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    # 安装 Qt（使用 aqtinstall）
     - name: Install Qt
       run: |
         pip install aqtinstall
-        mkdir Qt
-        cd Qt
-        aqt install-qt windows desktop 5.12.12 win32_msvc2017
-        aqt install-qt windows desktop 5.12.12 win64_msvc2017_64
-         
-    - name: build x64
+        python -m aqt install-qt windows desktop 5.12.12 win32_msvc2017 --outputdir Qt
+        python -m aqt install-qt windows desktop 5.12.12 win64_msvc2017_64 --outputdir Qt
+
+    # 构建 x64 项目
+    - name: Build x64
       shell: cmd
       run: |
         set QTDIR=%GITHUB_WORKSPACE%\Qt\5.12.12\msvc2017_64
-        set PATH=%PATH%;%GITHUB_WORKSPACE%\Qt\5.12.12\msvc2017_64\bin
+        set PATH=%PATH%;%QTDIR%\bin
         cmd.exe /c build-libffi.bat
         cmd.exe /c build-ultimate-x64.bat
- 
+
+    # 上传构建产物
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-          name: vmp
-          path: bin
+        name: vmp
+        path: bin
